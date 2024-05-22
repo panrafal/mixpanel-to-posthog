@@ -90,6 +90,8 @@ func main() {
 	// They can optionally just identify users
 	csvFile := flag.String("users-csv-file", "", "Path to CSV file to import users")
 	showVersion := flag.Bool("version", false, "Print version and exit")
+	fromFlag := flag.String("from", "", "From date")
+	toFlag := flag.String("to", "", "To date")
 	flag.Parse()
 
 	if *showVersion {
@@ -203,37 +205,51 @@ func main() {
 	color.Yellow("\nWARNING: If you have a large dataset, consider entering smaller date ranges at a time.")
 	color.Yellow("You may crash your machine if you try to export too much data at once.\n\n")
 
+	var fromString string
+	var toString string
+
 	// Prompt for from_date and to_date in the format 2006-01-02
-	fromDtPrompt := promptui.Prompt{
-		Label: "Enter from_date in the format YYYY-MM-DD",
-		Validate: func(input string) error {
-			// Validate date is in the format 2006-01-02
-			_, err := time.Parse("2006-01-02", input)
-			return err
-		},
+	if *fromFlag != "" {
+		fromString = *fromFlag
+	} else {
+		fromDtPrompt := promptui.Prompt{
+			Label: "Enter from_date in the format YYYY-MM-DD",
+			Validate: func(input string) error {
+				// Validate date is in the format 2006-01-02
+				_, err := time.Parse("2006-01-02", input)
+				return err
+			},
+		}
+		fromDtResult, err := fromDtPrompt.Run()
+		fromString = fromDtResult
+		if err != nil {
+			log.Fatal(err)
+			os.Exit(1)
+		}
 	}
-	fromDtResult, err := fromDtPrompt.Run()
-	if err != nil {
-		log.Fatal(err)
-		os.Exit(1)
-	}
-	to_date := promptui.Prompt{
-		Label: "Enter to_date in the format YYYY-MM-DD",
-		Validate: func(input string) error {
-			// Validate date is in the format 2006-01-02
-			_, err := time.Parse("2006-01-02", input)
-			return err
-		},
-	}
-	toDtResult, err := to_date.Run()
-	if err != nil {
-		log.Fatal(err)
-		os.Exit(1)
+
+	if *toFlag != "" {
+		toString = *toFlag
+	} else {
+		to_date := promptui.Prompt{
+			Label: "Enter to_date in the format YYYY-MM-DD",
+			Validate: func(input string) error {
+				// Validate date is in the format 2006-01-02
+				_, err := time.Parse("2006-01-02", input)
+				return err
+			},
+		}
+		toDtResult, err := to_date.Run()
+		toString = toDtResult
+		if err != nil {
+			log.Fatal(err)
+			os.Exit(1)
+		}
 	}
 
 	// Parse dates
-	fromDt, _ := time.Parse("2006-01-02", fromDtResult)
-	toDt, _ := time.Parse("2006-01-02", toDtResult)
+	fromDt, _ := time.Parse("2006-01-02", fromString)
+	toDt, _ := time.Parse("2006-01-02", toString)
 
 	posthogClient := getPosthogClient()
 	defer posthogClient.Close()
