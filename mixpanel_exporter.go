@@ -57,10 +57,13 @@ func (c *Mixpanel) Export() ([]MixpanelDataLine, error) {
 	resp, err := c.Client.Do(request)
 	if err != nil {
 		return nil, err
-	} else if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("status=%s; httpCode=%d Export failed", resp.Status, resp.StatusCode)
 	}
 	defer resp.Body.Close()
+	
+	if resp.StatusCode != 200 {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("status=%s; httpCode=%d; message=%s; Export failed", resp.Status, resp.StatusCode, string(bodyBytes))
+	}
 
 	// Custom decoder since they have a wonky format
 	dec := json.NewDecoder(resp.Body)
@@ -82,6 +85,24 @@ func (c *Mixpanel) Export() ([]MixpanelDataLine, error) {
 		switch line.Event {
 		case "Pageview":
 			formattedDataLine.Event = "$pageview"
+		case "Project created": continue
+		case "User created": continue
+		case "Anon: User created": continue
+		case "Auth: User created": continue
+		case "Trial started": continue
+		case "User verified": continue
+		case "Anon: User verified": continue
+		case "Subscription checkout": continue
+		case "Anon: Subscription checkout": continue
+		case "Subscription checkout success": continue
+		case "Anon: Subscription checkout success": continue
+		case "Subscription created": continue
+		case "Subscription updated": continue
+		case "Subscription cancelled": continue
+		case "Subscription payment success": continue
+		case "Subscription payment failed": continue
+		case "Subscription creation failed": continue
+		case "Subscription payment refunded": continue
 		default:
 			formattedDataLine.Event = line.Event
 		}
@@ -106,6 +127,10 @@ func (c *Mixpanel) Export() ([]MixpanelDataLine, error) {
 					formattedDataLine.Properties[k] = v
 				}
 			}
+		}
+
+		if formattedDataLine.DistinctID == "" {
+			formattedDataLine.DistinctID = "anon-mp"
 		}
 
 		if formattedDataLine.DistinctID == "" || formattedDataLine.Time.IsZero() {
